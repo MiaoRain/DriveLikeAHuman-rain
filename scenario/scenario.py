@@ -74,6 +74,7 @@ class Scenario:
 #定义了 upateVehicles 方法，用于更新车辆信息，根据观测数据更新车辆的状态，并将车辆信息写入数据库。
     def upateVehicles(self, observation: List[List], frame: int):
         self.frame = frame
+        # 连接到数据库
         conn = sqlite3.connect(self.database)
         cur = conn.cursor()
         for i in range(len(observation)):
@@ -81,19 +82,23 @@ class Scenario:
                 vid = 'ego'
             else:
                 vid = 'veh' + str(i)
-            presence, x, y, vx, vy = observation[i]
+            # 获取车辆观测数据，包括是否存在、位置坐标和速度信息
+            presence, x, y, vx, vy, _, _ = observation[i]
             if presence:
                 veh = self.vehicles[vid]
                 veh.presence = True
+                # 更新车辆属性（位置坐标和速度）
                 veh.updateProperty(x, y, vx, vy)
+                # 将车辆信息插入到数据库中
                 cur.execute(
                     '''INSERT INTO vehINFO VALUES (?,?,?,?,?,?,?);''',
                     (frame, vid, float(x), float(y),
                      veh.lane_id, float(vx), float(vy))
                 )
             else:
+                # 如果车辆不存在，清除车辆信息
                 self.vehicles[vid].clear()
-
+        # 提交数据库事务并关闭数据库连接
         conn.commit()
         conn.close()
 

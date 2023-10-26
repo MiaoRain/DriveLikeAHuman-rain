@@ -1,4 +1,6 @@
 import os
+
+import langchain
 import yaml
 import numpy as np
 import gymnasium as gym
@@ -26,7 +28,7 @@ if False:
     output_file = open('./results-video/log.txt', 'w')
     sys.stdout = output_file
     # ... (保持代码不变)
-
+os.environ["LANGCHAIN_TRACING"] = "true"
 def main():
     #step-1 创建大模型#######################################################
     OPENAI_CONFIG = yaml.load(open('config.yaml'), Loader=yaml.FullLoader)
@@ -47,10 +49,13 @@ def main():
         # os.environ["http_proxy"] = "http://127.0.0.1:10809"
         llm = ChatOpenAI(
             temperature=0,
-            model_name='gpt-4-0613', # or any other model with 8k+ context #gpt-3.5-turbo;gpt-3.5-turbo-16k-0613;gpt-4-0613
+            model_name='gpt-3.5-turbo-16k-0613',
+            openai_api_base="https://api.chatanywhere.com.cn/v1",
             max_tokens=1024,
             request_timeout=60
-        )#设置大模型
+        )
+        # or any other model with 8k+ context #gpt-3.5-turbo;gpt-3.5-turbo-16k-0613;gpt-4-0613;gpt-3.5-turbo-16k-0613
+        #设置大模型
 #Llama-2-7b-chat-hf
         # llm = ChatOpenAI(
         #     temperature=0,
@@ -62,30 +67,59 @@ def main():
     # base setting
     vehicleCount = 15
     # environment setting
-    config = {
-        "observation": {
-            "type": "Kinematics", #表示使用运动学信息。
-            "features": ["presence", "x", "y", "vx", "vy"], #"presence"（车辆存在与否）、"x"（车辆的 x 坐标）、"y"（车辆的 y 坐标）、"vx"（车辆的 x 方向速度）和 "vy"（车辆的 y 方向速度）。
-            "absolute": True, #设置为 True，表示观测信息的坐标是绝对坐标（而不是相对坐标）。
-            "normalize": False, #设置为 False，表示不对观测信息进行归一化处理。
-            "vehicles_count": vehicleCount,
-            "see_behind": True, #设置为 True，表示可以观测到车辆后面的信息。
-        },
-        "action": {
-            "type": "DiscreteMetaAction",#表示离散的元行动。
-            "target_speeds": np.linspace(0, 32, 9),# 生成一个包含9个不同速度值的数组，范围从0到32，用于表示不同的目标速度选项。
-        },
-        "duration": 40,#为40个时间步长。
-        "vehicles_density": 2,#制仿真中车辆的分布密度。
-        "show_trajectories": True,#表示显示车辆的轨迹信息。
-        "render_agent": True,#表示渲染驾驶代理的视图。
-    }
+    scenes = "merge" #"merge" #"highway"
+    if  scenes == "highway":
+        env = gym.make('highway-v0', render_mode="rgb_array")#gymnasium来创建highway场景
+        config = {
+            "observation": {
+                "type": "Kinematics", #表示使用运动学信息。
+                #"features": ["presence", "x", "y", "vx", "vy"], #"presence"（车辆存在与否）、"x"（车辆的 x 坐标）、"y"（车辆的 y 坐标）、"vx"（车辆的 x 方向速度）和 "vy"（车辆的 y 方向速度）。
+                "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
+                "absolute": True, #设置为 True，表示观测信息的坐标是绝对坐标（而不是相对坐标）。
+                "normalize": False, #设置为 False，表示不对观测信息进行归一化处理。
+                "vehicles_count": vehicleCount,
+                "see_behind": True, #设置为 True，表示可以观测到车辆后面的信息。
+                #"order": "sorted",
+            },
+            "action": {
+                "type": "DiscreteMetaAction",#表示离散的元行动。
+                "target_speeds": np.linspace(0, 32, 9),# 生成一个包含9个不同速度值的数组，范围从0到32，用于表示不同的目标速度选项。
+            },
+            "duration": 40,#为40个时间步长。
+            "vehicles_density": 2,#制仿真中车辆的分布密度。
+            "show_trajectories": True,#表示显示车辆的轨迹信息。
+            "render_agent": True,#表示渲染驾驶代理的视图。
+        }
 
-
-    #env = gym.make('highway-v0', render_mode="rgb_array")#gymnasium来创建highway场景
-    env = gym.make('highway-v0', render_mode="rgb_array")
+    if scenes == "merge":
+        env = gym.make("merge-v0", render_mode="rgb_array")
+        config = {
+            "observation": {
+                "type": "Kinematics",
+                "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
+                "absolute": True,  # 设置为 True，表示观测信息的坐标是绝对坐标（而不是相对坐标）。
+                "normalize": False,  # 设置为 False，表示不对观测信息进行归一化处理。
+                "vehicles_count": vehicleCount,
+                "see_behind": True,  # 设置为 True，表示可以观测到车辆后面的信息。
+            },
+            "action": {
+                "type": "DiscreteMetaAction",
+                "target_speeds": np.linspace(0, 32, 9),
+            },
+            "simulation_frequency": 15,  # [Hz]
+            "policy_frequency": 1,  # [Hz]
+            #"other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
+            "screen_width": 600,  # [px]
+            "screen_height": 150,  # [px]
+            "centering_position": [0.3, 0.5],
+            "scaling": 5.5,
+            "vehicles_density": 2,  # 制仿真中车辆的分布密度。
+            "show_trajectories": True,
+            "render_agent": True,
+            "offscreen_rendering": False
+        }
     #env = gym.make("merge-v0", render_mode="rgb_array")
-    #env = gym.make("roundabout-v0", render_mode="rgb_array")
+    # env = gym.make("roundabout-v0", render_mode="rgb_array")
     #env = gym.make("parking-v0", render_mode="rgb_array")
     #env = gym.make("intersection-v0", render_mode = "rgb_array")
     #env = gym.make("racetrack-v0", render_mode = "rgb_array")
@@ -125,6 +159,7 @@ def main():
 
     try:#如果退出保存录像
         while not (done or truncated):
+            langchain.debug = True
             sce.upateVehicles(obs, frame)#更新仿真场景中的车辆状态。
             DA.agentRun(output)#让代理分析环境并做出驾驶决策。
             da_output = DA.exportThoughts()
@@ -138,9 +173,9 @@ def main():
     finally:
         env.close()
 
-    # 恢复标准输出
-    sys.stdout = sys.__stdout__
-    # 关闭输出文件
-    output_file.close()
+    # # 恢复标准输出
+    # sys.stdout = sys.__stdout__
+    # # 关闭输出文件
+    # output_file.close()
 if __name__ == '__main__':
     main()

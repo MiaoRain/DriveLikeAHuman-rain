@@ -3,6 +3,7 @@ TRAFFIC_RULES = """
 1. Try to keep a safe distance to the car in front of you.
 2. If there is no safe decision, just slowing down.
 3. DONOT change lane frequently. If you want to change lane, double-check the safety of vehicles on target lane.
+4. 
 """
 
 POSSIBLE_ADD_RULES = """

@@ -68,6 +68,7 @@ class DriverAgent:
         else:
             last_step_action = "Not available"
             last_step_explanation = "Not available"
+        # 使用回调函数存储代理生成的自然语言文本和其他信息
         with get_openai_callback() as cb:#回调函数，将agent生成的自然语言文本与其他信息一起存储在内存中，以备后续使用。
             #self.agent.run 是一个方法调用，用于执行驾驶代理的决策过程。具体来说，这个方法通过与预定义的规则和逻辑来生成驾驶决策，该决策是以自然语言文本的形式输出的。
             #self.agent.run 方法接受一个包含文本提示和其他信息的字符串作为输入。这个字符串提供了驾驶代理在当前决策步骤中需要考虑的上下文、规则和任务。
@@ -84,7 +85,7 @@ class DriverAgent:
 
                 Here are your attentions points:
                 {DECISION_CAUTIONS}
-                
+                #让我们一步一步来思考。一旦你做出最终决策，请以以下格式输出：
                 Let's think step by step. Once you made a final decision, output it in the following format: \n
                 ```
                 Final Answer: 
@@ -93,6 +94,7 @@ class DriverAgent:
                 ``` \n
                 """,
                 callbacks=[self.ch]
+                #self.ch 可能用于捕获、记录或处理驾驶代理生成的自然语言文本和其他信息。
             )
 
         print(cb)

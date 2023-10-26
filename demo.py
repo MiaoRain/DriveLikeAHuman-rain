@@ -1,6 +1,97 @@
 # 使用langchain加载中文模型
 # 继承LLM，并重写_llm_type、_call、_identifying_params方法
 
+# ##################langchain模型###################################
+from typing import Any, List, Mapping, Optional
+from langchain.callbacks.manager import CallbackManagerForLLMRun
+from langchain.llms.base import LLM
+import os
+import yaml
+import numpy as np
+import gymnasium as gym
+from gymnasium.wrappers import RecordVideo
+from langchain.chat_models import AzureChatOpenAI, ChatOpenAI, ChatVertexAI
+from langchain.output_parsers import ResponseSchema
+from langchain.output_parsers import StructuredOutputParser
+
+{
+  "gift": False,
+  "delivery_days": 5,
+  "price_value": "pretty affordable!"
+}
+
+gift_schema = ResponseSchema(name="gift",
+                             description="Was the item purchased\
+                             as a gift for someone else? \
+                             Answer True if yes,\
+                             False if not or unknown.")
+delivery_days_schema = ResponseSchema(name="delivery_days",
+                                      description="How many days\
+                                      did it take for the product\
+                                      to arrive? If this \
+                                      information is not found,\
+                                      output -1.")
+price_value_schema = ResponseSchema(name="price_value",
+                                    description="Extract any\
+                                    sentences about the value or \
+                                    price, and output them as a \
+                                    comma separated Python list.")
+response_schemas = [gift_schema,
+                    delivery_days_schema,
+                    price_value_schema]
+output_parser = StructuredOutputParser.from_response_schemas(response_schemas)
+customer_review = """\
+This leaf blower is pretty amazing.  It has four settings:\
+candle blower, gentle breeze, windy city, and tornado. \
+It arrived in two days, just in time for my wife's \
+anniversary present. \
+I think my wife liked it so much she was speechless. \
+So far I've been the only one using it, and I've been \
+using it every other morning to clear the leaves on our lawn. \
+It's slightly more expensive than the other leaf blowers \
+out there, but I think it's worth it for the extra features.
+"""
+
+review_template = """\
+For the following text, extract the following information:
+
+gift: Was the item purchased as a gift for someone else? \
+Answer True if yes, False if not or unknown.
+
+delivery_days: How many days did it take for the product \
+to arrive? If this information is not found, output -1.
+
+price_value: Extract any sentences about the value or price,\
+and output them as a comma separated Python list.
+
+Format the output as JSON with the following keys:
+gift
+delivery_days
+price_value
+
+text: {text}
+"""
+
+from langchain.prompts import ChatPromptTemplate
+from langchain.chains import ConversationChain
+from langchain.memory import ConversationBufferMemory
+prompt_template = ChatPromptTemplate.from_template(review_template)
+print(prompt_template)
+os.environ["OPENAI_API_KEY"] = 'sk-mfSpwdDUbFLA1Sq0nGldKy5IY9StuRr9cbcuVRQWcsxsV2Kl'
+messages = prompt_template.format_messages(text=customer_review)
+memory = ConversationBufferMemory()
+chat = ChatOpenAI(temperature = 0,
+model_name = 'gpt-3.5-turbo-16k-0613',
+openai_api_base = "https://api.chatanywhere.com.cn/v1",)
+response = chat(messages)
+
+output_dict = output_parser.parse(response.content)
+
+# ##################langchain模型###################################
+
+
+
+
 # ##################下載hugging_face_hub中的模型###################################
 # from huggingface_hub import snapshot_download
 # snapshot_download(repo_id="openbmb/cpm-bee-1b", allow_patterns=["*.json", "pytorch_model.bin", "*.py", "vocab.txt"], local_dir="./cpm-bee-1b/")
@@ -10,41 +101,41 @@
 import json
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-class ModelLoader:
-    def __init__(self, model_name_or_path):
-        self.model_name_or_path = model_name_or_path
-        self.model, self.tokenizer = self.load()
-    def load(self):
-        tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, trust_remote_code=True)
-        model = AutoModelForCausalLM.from_pretrained(self.model_name_or_path, trust_remote_code=True)#.cuda()
-        return model, tokenizer
-# 指定本地模型的路径
-model_name_or_path = ".\\cpm-bee-1b"
-modelLoader = ModelLoader(model_name_or_path)
-from typing import Any, List, Mapping, Optional
-from langchain.llms.base import LLM
-class CpmBee(LLM):
-    @property
-    def _llm_type(self) -> str:
-        return "cpm-bee-1B"
-    def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
-        print(prompt)
-        prompt = json.loads(prompt)
-        tokenizer = modelLoader.tokenizer
-        model = modelLoader.model
-        result = model.generate(prompt, tokenizer)
-        if len(result) == 1:
-            return result[0]["<ans>"]
-        return "对不起，我没有理解你的意思"
-    @property
-    def _identifying_params(self) -> Mapping[str, Any]:
-        params_dict = {
-            "test": "这里是参数字典",
-        }
-        return params_dict
-prompt = {"input": "今天天气真不错", "question": "今天天气怎么样？", "<ans>": ""}
-cpmBee = CpmBee()
-print(cpmBee)
+# class ModelLoader:
+#     def __init__(self, model_name_or_path):
+#         self.model_name_or_path = model_name_or_path
+#         self.model, self.tokenizer = self.load()
+#     def load(self):
+#         tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, trust_remote_code=True)
+#         model = AutoModelForCausalLM.from_pretrained(self.model_name_or_path, trust_remote_code=True)#.cuda()
+#         return model, tokenizer
+# # 指定本地模型的路径
+# model_name_or_path = ".\\cpm-bee-1b"
+# modelLoader = ModelLoader(model_name_or_path)
+# from typing import Any, List, Mapping, Optional
+# from langchain.llms.base import LLM
+# class CpmBee(LLM):
+#     @property
+#     def _llm_type(self) -> str:
+#         return "cpm-bee-1B"
+#     def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
+#         print(prompt)
+#         prompt = json.loads(prompt)
+#         tokenizer = modelLoader.tokenizer
+#         model = modelLoader.model
+#         result = model.generate(prompt, tokenizer)
+#         if len(result) == 1:
+#             return result[0]["<ans>"]
+#         return "对不起，我没有理解你的意思"
+#     @property
+#     def _identifying_params(self) -> Mapping[str, Any]:
+#         params_dict = {
+#             "test": "这里是参数字典",
+#         }
+#         return params_dict
+# prompt = {"input": "今天天气真不错", "question": "今天天气怎么样？", "<ans>": ""}
+# cpmBee = CpmBee()
+# print(cpmBee)
 # print(cpmBee(json.dumps(prompt, ensure_ascii=False)))
 # """
 # CpmBee
